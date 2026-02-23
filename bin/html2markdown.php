@@ -40,6 +40,51 @@ if (!$autoloaded) {
 
 use League\HTMLToMarkdown\HtmlConverter;
 use League\HTMLToMarkdown\Converter\TableConverter;
+use League\HTMLToMarkdown\Converter\ConverterInterface;
+use League\HTMLToMarkdown\ElementInterface;
+
+/**
+ * Converts <s>, <del>, <strike> to ~~strikethrough~~.
+ */
+class StrikethroughConverter implements ConverterInterface
+{
+    public function convert(ElementInterface $element): string
+    {
+        $value = $element->getValue();
+        if (!trim($value)) {
+            return $value;
+        }
+        return '~~' . trim($value) . '~~';
+    }
+
+    public function getSupportedTags(): array
+    {
+        return ['s', 'del', 'strike'];
+    }
+}
+
+/**
+ * Converts <figure> to its inner content with surrounding blank lines,
+ * and <figcaption> to italic text on its own line.
+ */
+class FigureConverter implements ConverterInterface
+{
+    public function convert(ElementInterface $element): string
+    {
+        $tag = $element->getTagName();
+        $value = trim($element->getValue());
+        if ($tag === 'figcaption') {
+            return $value ? "\n*" . $value . "*" : '';
+        }
+        // <figure>: ensure block spacing
+        return "\n\n" . $value . "\n\n";
+    }
+
+    public function getSupportedTags(): array
+    {
+        return ['figure', 'figcaption'];
+    }
+}
 
 // Read all of stdin
 $html = file_get_contents('php://stdin');
@@ -160,6 +205,8 @@ try {
     ]);
 
     $converter->getEnvironment()->addConverter(new TableConverter());
+    $converter->getEnvironment()->addConverter(new StrikethroughConverter());
+    $converter->getEnvironment()->addConverter(new FigureConverter());
 
     $markdown = $converter->convert($cleanedHtml);
 
