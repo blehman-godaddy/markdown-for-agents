@@ -1,4 +1,4 @@
- # My WordPress Post
+# My WordPress Post
 
  Published: January 15, 2026 By Author Name 
 
@@ -24,4 +24,4 @@ function hello() {
 
 Final thoughts on the topic.
 
-<!-- mfa-meta:tokens=134 html-tokens=768 reduction=83% -->
+<!-- mfa-meta:tokens=134 html-tokens=768 reduction=83% extraction=article -->

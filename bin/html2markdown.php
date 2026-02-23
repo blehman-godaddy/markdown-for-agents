@@ -118,81 +118,128 @@ try {
 
     $xpath = new DOMXPath($dom);
 
-    // Strip non-content elements by tag name
-    $stripTags = ['nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'iframe'];
-    foreach ($stripTags as $tag) {
-        $nodes = $xpath->query('//' . $tag);
-        if ($nodes !== false) {
-            foreach (iterator_to_array($nodes) as $node) {
-                $node->parentNode->removeChild($node);
+    // --- Content extraction strategy ---
+    // Prefer semantic content containers over full-page stripping.
+    // Priority: <article> → <main> → [role="main"] → fallback to body + strip
+    $contentNode = null;
+    $extractionMethod = 'fallback';
+
+    // Try <article> first (most specific content container)
+    $articles = $xpath->query('//article');
+    if ($articles !== false && $articles->length === 1) {
+        $contentNode = $articles->item(0);
+        $extractionMethod = 'article';
+    }
+
+    // Try <main> if no single article found
+    if ($contentNode === null) {
+        $main = $xpath->query('//main')->item(0);
+        if ($main !== null) {
+            $contentNode = $main;
+            $extractionMethod = 'main';
+        }
+    }
+
+    // Try [role="main"]
+    if ($contentNode === null) {
+        $roleMain = $xpath->query('//*[@role="main"]')->item(0);
+        if ($roleMain !== null) {
+            $contentNode = $roleMain;
+            $extractionMethod = 'role-main';
+        }
+    }
+
+    if ($contentNode !== null) {
+        // Semantic extraction: strip script/style within the content node,
+        // then use its innerHTML directly
+        $contentXpath = new DOMXPath($dom);
+        foreach (['script', 'style', 'noscript', 'iframe'] as $tag) {
+            $nodes = $contentXpath->query('.//' . $tag, $contentNode);
+            if ($nodes !== false) {
+                foreach (iterator_to_array($nodes) as $node) {
+                    $node->parentNode->removeChild($node);
+                }
             }
         }
-    }
 
-    // Strip elements by class containing non-content keywords
-    // Match keyword as: standalone class ("ad"), hyphenated prefix ("ad-banner"),
-    // or hyphenated suffix ("sidebar-widget"). Avoids false positives like
-    // "has-global-padding" matching "ad".
-    $classKeywords = ['sidebar', 'widget', 'ad', 'advertisement', 'navigation', 'menu', 'breadcrumb'];
-    foreach ($classKeywords as $keyword) {
-        $query = '//*['
-            . 'contains(concat(" ", normalize-space(@class), " "), " ' . $keyword . ' ")'
-            . ' or contains(concat(" ", normalize-space(@class), " "), " ' . $keyword . '-")'
-            . ' or contains(concat(" ", normalize-space(@class), "-"), "-' . $keyword . '-")'
-            . ']';
-        $nodes = $xpath->query($query);
-        if ($nodes !== false) {
-            foreach (iterator_to_array($nodes) as $node) {
-                $node->parentNode->removeChild($node);
-            }
-        }
-    }
-
-    // Strip elements by ARIA role
-    $ariaRoles = ['navigation', 'banner', 'contentinfo', 'complementary'];
-    foreach ($ariaRoles as $role) {
-        $nodes = $xpath->query('//*[@role="' . $role . '"]');
-        if ($nodes !== false) {
-            foreach (iterator_to_array($nodes) as $node) {
-                $node->parentNode->removeChild($node);
-            }
-        }
-    }
-
-    // Strip skip-links (accessibility anchor links like "Skip to content")
-    $nodes = $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " skip-link ") or contains(concat(" ", normalize-space(@class), " "), " screen-reader-text ")]');
-    if ($nodes !== false) {
-        foreach (iterator_to_array($nodes) as $node) {
-            $node->parentNode->removeChild($node);
-        }
-    }
-
-    // Strip scroll-to-top / back-to-top elements (various themes)
-    $nodes = $xpath->query('//*[contains(@class, "scroll-to-top") or contains(@class, "back-to-top") or contains(@class, "scrolltop") or contains(@id, "scroll-top") or contains(@id, "back-to-top")]');
-    if ($nodes !== false) {
-        foreach (iterator_to_array($nodes) as $node) {
-            $node->parentNode->removeChild($node);
-        }
-    }
-
-    // Extract body innerHTML (strip <html>, <head>, <body> wrappers)
-    $body = $xpath->query('//body')->item(0);
-    if ($body !== null) {
         $cleanedHtml = '';
-        foreach ($body->childNodes as $child) {
+        foreach ($contentNode->childNodes as $child) {
             $cleanedHtml .= $dom->saveHTML($child);
         }
     } else {
-        $cleanedHtml = $dom->saveHTML();
+        // Fallback: full-page stripping for pages without semantic markup
+
+        // Strip non-content elements by tag name
+        $stripTags = ['nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'iframe'];
+        foreach ($stripTags as $tag) {
+            $nodes = $xpath->query('//' . $tag);
+            if ($nodes !== false) {
+                foreach (iterator_to_array($nodes) as $node) {
+                    $node->parentNode->removeChild($node);
+                }
+            }
+        }
+
+        // Strip elements by class containing non-content keywords
+        $classKeywords = ['sidebar', 'widget', 'ad', 'advertisement', 'navigation', 'menu', 'breadcrumb'];
+        foreach ($classKeywords as $keyword) {
+            $query = '//*['
+                . 'contains(concat(" ", normalize-space(@class), " "), " ' . $keyword . ' ")'
+                . ' or contains(concat(" ", normalize-space(@class), " "), " ' . $keyword . '-")'
+                . ' or contains(concat(" ", normalize-space(@class), "-"), "-' . $keyword . '-")'
+                . ']';
+            $nodes = $xpath->query($query);
+            if ($nodes !== false) {
+                foreach (iterator_to_array($nodes) as $node) {
+                    $node->parentNode->removeChild($node);
+                }
+            }
+        }
+
+        // Strip elements by ARIA role
+        $ariaRoles = ['navigation', 'banner', 'contentinfo', 'complementary'];
+        foreach ($ariaRoles as $role) {
+            $nodes = $xpath->query('//*[@role="' . $role . '"]');
+            if ($nodes !== false) {
+                foreach (iterator_to_array($nodes) as $node) {
+                    $node->parentNode->removeChild($node);
+                }
+            }
+        }
+
+        // Strip skip-links
+        $nodes = $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " skip-link ") or contains(concat(" ", normalize-space(@class), " "), " screen-reader-text ")]');
+        if ($nodes !== false) {
+            foreach (iterator_to_array($nodes) as $node) {
+                $node->parentNode->removeChild($node);
+            }
+        }
+
+        // Strip scroll-to-top / back-to-top elements
+        $nodes = $xpath->query('//*[contains(@class, "scroll-to-top") or contains(@class, "back-to-top") or contains(@class, "scrolltop") or contains(@id, "scroll-top") or contains(@id, "back-to-top")]');
+        if ($nodes !== false) {
+            foreach (iterator_to_array($nodes) as $node) {
+                $node->parentNode->removeChild($node);
+            }
+        }
+
+        // Extract body innerHTML
+        $body = $xpath->query('//body')->item(0);
+        if ($body !== null) {
+            $cleanedHtml = '';
+            foreach ($body->childNodes as $child) {
+                $cleanedHtml .= $dom->saveHTML($child);
+            }
+        } else {
+            $cleanedHtml = $dom->saveHTML();
+        }
     }
 
     if ($cleanedHtml === false || trim($cleanedHtml) === '') {
-        // Fallback to original
         echo $html;
         exit(0);
     }
 
-    // Also strip <head> content that may remain
     $cleanedHtml = (string) $cleanedHtml;
 
     // Convert to Markdown
@@ -231,7 +278,7 @@ try {
         : 0;
 
     // Append metadata
-    $markdown .= "\n<!-- mfa-meta:tokens={$tokenEstimate} html-tokens={$htmlTokenEstimate} reduction={$reduction}% -->\n";
+    $markdown .= "\n<!-- mfa-meta:tokens={$tokenEstimate} html-tokens={$htmlTokenEstimate} reduction={$reduction}% extraction={$extractionMethod} -->\n";
 
     echo $markdown;
 

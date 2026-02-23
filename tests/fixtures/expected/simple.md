@@ -10,4 +10,4 @@ Another paragraph with a [link](https://example.com).
 - Item two
 - Item three
 
-<!-- mfa-meta:tokens=46 html-tokens=112 reduction=59% -->
+<!-- mfa-meta:tokens=46 html-tokens=112 reduction=59% extraction=fallback -->

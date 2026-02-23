@@ -71,4 +71,4 @@ Keywords: sidebar, widget, ad, advertisement, navigation, menu, breadcrumb
 4. GitHub Actions builds tarball automatically
 5. Deploy: `curl -sL .../releases/download/v{VERSION}/markdown-for-agents-{VERSION}.tar.gz | tar xz && cd markdown-for-agents-{VERSION} && sudo bash install/install.sh`
 
-## Current version: v0.1.6
+## Current version: v0.1.7

@@ -16,7 +16,7 @@ ERRORS=0
 input='<h1>Hello</h1><p>World</p>'
 output=$(echo "$input" | "$PHP_BIN" "$CONVERTER" 2>/dev/null)
 
-if ! echo "$output" | grep -qE '<!-- mfa-meta:tokens=[0-9]+ html-tokens=[0-9]+ reduction=[0-9]+% -->'; then
+if ! echo "$output" | grep -qE '<!-- mfa-meta:tokens=[0-9]+ html-tokens=[0-9]+ reduction=[0-9]+% extraction=[a-z-]+ -->'; then
     echo "FAIL: Token metadata comment missing from output"
     echo "Output: $output"
     ERRORS=$((ERRORS + 1))
@@ -37,10 +37,10 @@ fi
 
 # Test 3: Token metadata is on the last line
 last_line=$(echo "$output" | tail -1)
-if ! echo "$last_line" | grep -qE '<!-- mfa-meta:tokens=[0-9]+ html-tokens=[0-9]+ reduction=[0-9]+% -->'; then
+if ! echo "$last_line" | grep -qE '<!-- mfa-meta:tokens=[0-9]+ html-tokens=[0-9]+ reduction=[0-9]+% extraction=[a-z-]+ -->'; then
     # Allow empty trailing line — check second-to-last
     second_last=$(echo "$output" | sed -n 'x;$p')
-    if ! echo "$second_last" | grep -qE '<!-- mfa-meta:tokens=[0-9]+ html-tokens=[0-9]+ reduction=[0-9]+% -->'; then
+    if ! echo "$second_last" | grep -qE '<!-- mfa-meta:tokens=[0-9]+ html-tokens=[0-9]+ reduction=[0-9]+% extraction=[a-z-]+ -->'; then
         echo "FAIL: Token metadata should be near the end of output"
         echo "Last line: '$last_line'"
         ERRORS=$((ERRORS + 1))
