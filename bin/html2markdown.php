@@ -80,9 +80,17 @@ try {
     }
 
     // Strip elements by class containing non-content keywords
+    // Match keyword as: standalone class ("ad"), hyphenated prefix ("ad-banner"),
+    // or hyphenated suffix ("sidebar-widget"). Avoids false positives like
+    // "has-global-padding" matching "ad".
     $classKeywords = ['sidebar', 'widget', 'ad', 'advertisement', 'navigation', 'menu', 'breadcrumb'];
     foreach ($classKeywords as $keyword) {
-        $nodes = $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), "' . $keyword . '")]');
+        $query = '//*['
+            . 'contains(concat(" ", normalize-space(@class), " "), " ' . $keyword . ' ")'
+            . ' or contains(concat(" ", normalize-space(@class), " "), " ' . $keyword . '-")'
+            . ' or contains(concat(" ", normalize-space(@class), "-"), "-' . $keyword . '-")'
+            . ']';
+        $nodes = $xpath->query($query);
         if ($nodes !== false) {
             foreach (iterator_to_array($nodes) as $node) {
                 $node->parentNode->removeChild($node);
