@@ -31,10 +31,10 @@ Client                         Apache                        Origin
 
 ### Key design decisions
 
-- **Zero overhead for normal requests**: `enableenv=WANTS_MARKDOWN` removes the filter from the chain entirely when the Accept header doesn't match
-- **Content stripping**: Non-content elements (nav, sidebar, footer, ads) are removed via XPath before conversion
+- **Zero overhead for normal requests**: The filter is only inserted into the chain when `Accept: text/markdown` is detected via `SetEnvIf`
+- **Content stripping**: Non-content elements (nav, sidebar, footer, ads, skip-links, scroll-to-top) are removed via XPath before conversion
 - **Safe fallback**: On any error, the original HTML is returned unchanged
-- **Token estimation**: `<!-- mfa-meta:tokens=N -->` embedded in body (mod_ext_filter can't set headers from subprocess)
+- **Token metadata**: `<!-- mfa-meta:tokens=N html-tokens=N reduction=N% -->` embedded in the response body
 
 ## Quick Start
 
@@ -48,8 +48,9 @@ Client                         Apache                        Origin
 Download and extract the latest release, then run the installer:
 
 ```bash
-curl -sL https://github.com/blehman-godaddy/markdown-for-agents/releases/latest/download/markdown-for-agents-0.1.0.tar.gz | tar xz
-cd markdown-for-agents-0.1.0
+VERSION=0.1.4
+curl -sL https://github.com/blehman-godaddy/markdown-for-agents/releases/download/v${VERSION}/markdown-for-agents-${VERSION}.tar.gz | tar xz
+cd markdown-for-agents-${VERSION}
 sudo bash install/install.sh
 ```
 
@@ -70,26 +71,26 @@ This runs all preflight checks (root, PHP, Apache, vendor/, mod_ext_filter) and 
 If you're developing or want to build the tarball yourself:
 
 ```bash
-git clone <repo-url> markdown-for-agents
+git clone https://github.com/blehman-godaddy/markdown-for-agents.git
 cd markdown-for-agents
 make dist
-# produces dist/markdown-for-agents-0.1.0.tar.gz
+# produces dist/markdown-for-agents-${VERSION}.tar.gz
 ```
 
 Then copy the tarball to your server and install:
 
 ```bash
-scp dist/markdown-for-agents-0.1.0.tar.gz root@server:/tmp/
-ssh root@server 'cd /tmp && tar xzf markdown-for-agents-0.1.0.tar.gz && cd markdown-for-agents-0.1.0 && bash install/install.sh'
+scp dist/markdown-for-agents-*.tar.gz root@server:/tmp/
+ssh root@server 'cd /tmp && tar xzf markdown-for-agents-*.tar.gz && cd markdown-for-agents-*/ && bash install/install.sh'
 ```
 
 ### Install directly from git (alternative)
 
 ```bash
-git clone <repo-url> /tmp/markdown-for-agents
+git clone https://github.com/blehman-godaddy/markdown-for-agents.git /tmp/markdown-for-agents
 cd /tmp/markdown-for-agents
 composer install --no-dev
-sudo ./install/install.sh
+sudo bash install/install.sh
 ```
 
 ### What the installer does
@@ -114,7 +115,7 @@ curl -s -H "Accept: text/markdown" http://localhost/
 curl -sI -H "Accept: text/markdown" http://localhost/
 # → Content-Type: text/markdown; charset=utf-8
 # → Vary: Accept
-# → x-markdown-converter: markdown-for-agents/0.1.0
+# → x-markdown-converter: markdown-for-agents/0.1.4
 # → x-markdown-tokens: body-embedded
 ```
 
@@ -129,7 +130,7 @@ echo '<html><body><nav>Menu</nav><h1>Title</h1><p>Content here.</p><footer>Foote
 #
 # Content here.
 #
-# <!-- mfa-meta:tokens=... -->
+# <!-- mfa-meta:tokens=7 html-tokens=28 reduction=75% -->
 ```
 
 ### Run test suite
@@ -141,7 +142,7 @@ echo '<html><body><nav>Menu</nav><h1>Title</h1><p>Content here.</p><footer>Foote
 ### Uninstall
 
 ```bash
-sudo ./install/uninstall.sh
+sudo bash install/uninstall.sh
 ```
 
 ## Project Structure
@@ -179,6 +180,9 @@ The following elements are removed before conversion:
 | Tags | `nav`, `header`, `footer`, `aside`, `script`, `style`, `noscript`, `iframe` |
 | Classes | `sidebar`, `widget`, `ad`, `advertisement`, `navigation`, `menu`, `breadcrumb` |
 | ARIA roles | `navigation`, `banner`, `contentinfo`, `complementary` |
+| UI elements | skip-links (`skip-link`, `screen-reader-text`), scroll-to-top (`scroll-to-top`, `back-to-top`) |
+
+Class matching uses word-boundary logic (space-bounded + hyphen-prefix) to avoid false positives like `"ad"` matching `"has-global-padding"`.
 
 ## Response Headers
 
@@ -188,22 +192,29 @@ When `Accept: text/markdown` is present:
 |---|---|
 | `Content-Type` | `text/markdown; charset=utf-8` |
 | `Vary` | `Accept` |
-| `x-markdown-converter` | `markdown-for-agents/0.1.0` |
+| `x-markdown-converter` | `markdown-for-agents/0.1.4` |
 | `x-markdown-tokens` | `body-embedded` |
 
-The actual token count is embedded as the last line of the body: `<!-- mfa-meta:tokens=N -->`
+The token metadata is embedded as the last line of the body:
 
-## Architecture (Phase 1)
+```
+<!-- mfa-meta:tokens=74 html-tokens=16596 reduction=100% -->
+```
 
-Uses `mod_ext_filter` + PHP-CLI:
+- `tokens` — estimated token count of the Markdown output (~4 chars/token)
+- `html-tokens` — estimated token count of the original HTML
+- `reduction` — percentage reduction from HTML to Markdown
+
+## Architecture
+
+Uses `mod_ext_filter` to pipe HTML through a PHP-CLI converter:
 
 1. `SetEnvIfNoCase` detects `Accept: text/markdown` → sets `WANTS_MARKDOWN` env var
-2. `ExtFilterDefine` defines the filter with `enableenv=WANTS_MARKDOWN` + `intype=text/html`
-3. `AddOutputFilterByType` inserts the filter for `text/html` responses only
-4. The filter pipes HTML through the PHP converter and returns Markdown
-5. Response headers are set via `Header` directives conditioned on `WANTS_MARKDOWN`
-
-Phase 2 will replace the PHP converter with a native C Apache module for production performance.
+2. `ExtFilterDefine` registers the filter with `enableenv=WANTS_MARKDOWN` + `intype=text/html`
+3. `AddOutputFilter` applies to static files; `<If>` with `SetOutputFilter` handles proxied PHP (php-fpm)
+4. The filter pipes HTML through `html2markdown-wrapper.sh` → `html2markdown.php`
+5. PHP strips non-content elements via XPath, converts to Markdown via `league/html-to-markdown`, appends token metadata
+6. Response headers are set via `Header` directives conditioned on `WANTS_MARKDOWN`
 
 ## License
 

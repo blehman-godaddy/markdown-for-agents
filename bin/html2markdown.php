@@ -109,6 +109,22 @@ try {
         }
     }
 
+    // Strip skip-links (accessibility anchor links like "Skip to content")
+    $nodes = $xpath->query('//a[contains(concat(" ", normalize-space(@class), " "), " skip-link ") or contains(concat(" ", normalize-space(@class), " "), " screen-reader-text ")]');
+    if ($nodes !== false) {
+        foreach (iterator_to_array($nodes) as $node) {
+            $node->parentNode->removeChild($node);
+        }
+    }
+
+    // Strip scroll-to-top / back-to-top elements
+    $nodes = $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " scroll-to-top ") or contains(concat(" ", normalize-space(@class), " "), " back-to-top ") or contains(concat(" ", normalize-space(@class), " "), " scrolltop ") or @id="scroll-to-top" or @id="back-to-top"]');
+    if ($nodes !== false) {
+        foreach (iterator_to_array($nodes) as $node) {
+            $node->parentNode->removeChild($node);
+        }
+    }
+
     // Extract body innerHTML (strip <html>, <head>, <body> wrappers)
     $body = $xpath->query('//body')->item(0);
     if ($body !== null) {
@@ -141,6 +157,16 @@ try {
     $converter->getEnvironment()->addConverter(new TableConverter());
 
     $markdown = $converter->convert($cleanedHtml);
+
+    // Clean up backslash-escaped quotes (WordPress/DOMDocument artifacts)
+    $markdown = str_replace(['\\"', "\\'"], ['"', "'"], $markdown);
+    // Remove spurious quotes around URLs in links/images: [text]("url") → [text](url)
+    $markdown = preg_replace('/\("([^"]*?)"\)/', '($1)', $markdown);
+    // Remove spurious quotes in image alt text: !["alt"](url) → ![alt](url)
+    $markdown = preg_replace('/!\["([^"]*?)"\]/', '![$1]', $markdown);
+
+    // Collapse excessive blank lines (3+ → 2)
+    $markdown = preg_replace('/\n{3,}/', "\n\n", $markdown);
 
     // Trim trailing whitespace
     $markdown = rtrim($markdown) . "\n";

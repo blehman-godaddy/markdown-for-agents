@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0"
+  xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:wp="http://wordpress.org/export/1.2/"
+>
+<channel>
+  <title>Test Import</title>
+  <wp:wxr_version>1.2</wp:wxr_version>
+
+  <item>
+    <title>Markdown Conversion Test Page</title>
+    <wp:post_type>page</wp:post_type>
+    <wp:status>publish</wp:status>
+    <content:encoded><![CDATA[
+<!-- wp:heading -->
+<h2>Basic Typography</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>This page tests <strong>bold</strong>, <em>italic</em>, <code>inline code</code>, and <a href="https://example.com">links</a>. It also has a <strong><em>bold italic</em></strong> phrase and some <s>strikethrough</s> text.</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:heading {"level":3} -->
+<h3>Unordered List</h3>
+<!-- /wp:heading -->
+
+<!-- wp:list -->
+<ul>
+<li>First item</li>
+<li>Second item with <strong>bold</strong></li>
+<li>Third item with a <a href="https://example.com">link</a></li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:heading {"level":3} -->
+<h3>Ordered List</h3>
+<!-- /wp:heading -->
+
+<!-- wp:list {"ordered":true} -->
+<ol>
+<li>Step one</li>
+<li>Step two</li>
+<li>Step three</li>
+</ol>
+<!-- /wp:list -->
+
+<!-- wp:heading -->
+<h2>Code Block</h2>
+<!-- /wp:heading -->
+
+<!-- wp:code -->
+<pre class="wp-block-code"><code>curl -sL -H 'Accept: text/markdown' https://littleluz.net/wordpress/
+# Returns markdown instead of HTML</code></pre>
+<!-- /wp:code -->
+
+<!-- wp:heading -->
+<h2>Blockquote</h2>
+<!-- /wp:heading -->
+
+<!-- wp:quote -->
+<blockquote class="wp-block-quote"><p>The best way to predict the future is to invent it.</p><cite>Alan Kay</cite></blockquote>
+<!-- /wp:quote -->
+
+<!-- wp:heading -->
+<h2>Table</h2>
+<!-- /wp:heading -->
+
+<!-- wp:table -->
+<figure class="wp-block-table"><table><thead><tr><th>Format</th><th>Tokens</th><th>Reduction</th></tr></thead><tbody><tr><td>HTML</td><td>16,596</td><td>0%</td></tr><tr><td>Markdown</td><td>74</td><td>~100%</td></tr></tbody></table></figure>
+<!-- /wp:table -->
+
+<!-- wp:heading -->
+<h2>Image</h2>
+<!-- /wp:heading -->
+
+<!-- wp:image {"sizeSlug":"large"} -->
+<figure class="wp-block-image size-large"><img src="https://placeholderjs.com/600x300" alt="Placeholder test image"/><figcaption>A test image caption</figcaption></figure>
+<!-- /wp:image -->
+
+<!-- wp:heading -->
+<h2>Nested Content</h2>
+<!-- /wp:heading -->
+
+<!-- wp:paragraph -->
+<p>Below is a nested list to verify depth handling:</p>
+<!-- /wp:paragraph -->
+
+<!-- wp:list -->
+<ul>
+<li>Parent item
+<ul>
+<li>Child item A</li>
+<li>Child item B
+<ul>
+<li>Grandchild</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Another parent</li>
+</ul>
+<!-- /wp:list -->
+
+<!-- wp:separator -->
+<hr class="wp-block-separator"/>
+<!-- /wp:separator -->
+
+<!-- wp:paragraph -->
+<p>End of test content. If you're reading this as markdown, the converter is working.</p>
+<!-- /wp:paragraph -->
+]]></content:encoded>
+  </item>
+
+</channel>
+</rss>
