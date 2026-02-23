@@ -57,6 +57,11 @@ if (strlen($html) > $maxSize) {
 }
 
 try {
+    // Pre-clean: strip stray backslashes before quotes/entities in HTML
+    // WordPress/some CMSes emit \&#8217; or \" in raw HTML output
+    $html = preg_replace('/\\\\(&#\d+;)/', '$1', $html);
+    $html = preg_replace('/\\\\(["\'])/', '$1', $html);
+
     // Load into DOMDocument
     $dom = new DOMDocument();
 
@@ -117,8 +122,8 @@ try {
         }
     }
 
-    // Strip scroll-to-top / back-to-top elements
-    $nodes = $xpath->query('//*[contains(concat(" ", normalize-space(@class), " "), " scroll-to-top ") or contains(concat(" ", normalize-space(@class), " "), " back-to-top ") or contains(concat(" ", normalize-space(@class), " "), " scrolltop ") or @id="scroll-to-top" or @id="back-to-top"]');
+    // Strip scroll-to-top / back-to-top elements (various themes)
+    $nodes = $xpath->query('//*[contains(@class, "scroll-to-top") or contains(@class, "back-to-top") or contains(@class, "scrolltop") or contains(@id, "scroll-top") or contains(@id, "back-to-top")]');
     if ($nodes !== false) {
         foreach (iterator_to_array($nodes) as $node) {
             $node->parentNode->removeChild($node);
