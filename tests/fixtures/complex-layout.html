@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Complex Layout Page</title>
+    <style>.container { max-width: 1200px; margin: 0 auto; }</style>
+    <script>var tracking = true;</script>
+</head>
+<body>
+    <header role="banner">
+        <div class="logo">Company Name</div>
+        <nav role="navigation" class="primary-navigation">
+            <ul class="menu">
+                <li><a href="/">Home</a></li>
+                <li><a href="/products">Products</a></li>
+                <li><a href="/about">About</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="breadcrumb">
+        <a href="/">Home</a> / <a href="/products">Products</a> / Widget Pro
+    </div>
+
+    <main class="content-area">
+        <h1>Widget Pro — The Best Widget</h1>
+        <p>Introducing Widget Pro, our flagship product that helps you do amazing things.</p>
+
+        <h2>Features</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Basic</th>
+                    <th>Pro</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Speed</td>
+                    <td>Fast</td>
+                    <td>Ultra Fast</td>
+                </tr>
+                <tr>
+                    <td>Storage</td>
+                    <td>10 GB</td>
+                    <td>100 GB</td>
+                </tr>
+                <tr>
+                    <td>Support</td>
+                    <td>Email</td>
+                    <td>24/7 Phone</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>How It Works</h2>
+        <ol>
+            <li>Sign up for an account</li>
+            <li>Configure your settings</li>
+            <li>Start using Widget Pro</li>
+        </ol>
+
+        <p>For more details, see our <a href="/docs">documentation</a> or <a href="/contact">contact us</a>.</p>
+
+        <h2>Customer Testimonials</h2>
+        <blockquote>
+            <p>Widget Pro changed the way I work. Highly recommended!</p>
+        </blockquote>
+
+        <p>Ready to get started? <a href="/signup"><strong>Sign up today</strong></a>.</p>
+    </main>
+
+    <aside role="complementary" class="sidebar">
+        <div class="widget">
+            <h3>Related Products</h3>
+            <ul>
+                <li><a href="/widget-lite">Widget Lite</a></li>
+                <li><a href="/widget-enterprise">Widget Enterprise</a></li>
+            </ul>
+        </div>
+        <div class="ad-banner advertisement">
+            <p>Special offer: 50% off!</p>
+            <a href="/promo">Click here</a>
+        </div>
+    </aside>
+
+    <footer role="contentinfo">
+        <div class="footer-links">
+            <a href="/privacy">Privacy</a>
+            <a href="/terms">Terms</a>
+        </div>
+        <p>&copy; 2026 Company Name</p>
+    </footer>
+
+    <noscript>
+        <p>Please enable JavaScript for the best experience.</p>
+    </noscript>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded');
+        });
+    </script>
+
+    <iframe src="https://ads.example.com/banner" width="300" height="250"></iframe>
+</body>
+</html>

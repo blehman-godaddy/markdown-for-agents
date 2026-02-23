@@ -1,0 +1,16 @@
+{
+    "name": "markdown-for-agents/markdown-for-agents",
+    "description": "Apache output filter that converts HTML to Markdown via Accept: text/markdown content negotiation",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.0",
+        "ext-dom": "*",
+        "ext-xml": "*",
+        "league/html-to-markdown": "^5.1"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    }
+}
