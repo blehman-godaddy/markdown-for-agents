@@ -50,7 +50,7 @@ Download and extract the latest release, then run the installer:
 ```bash
 curl -sL https://github.com/blehman-godaddy/markdown-for-agents/releases/latest/download/markdown-for-agents-0.1.0.tar.gz | tar xz
 cd markdown-for-agents-0.1.0
-sudo ./install/install.sh
+sudo bash install/install.sh
 ```
 
 The tarball is self-contained — it includes all PHP dependencies, so Composer is not needed on the server.
@@ -60,7 +60,7 @@ The tarball is self-contained — it includes all PHP dependencies, so Composer 
 Before installing, you can verify that all prerequisites are met without modifying anything:
 
 ```bash
-sudo ./install/install.sh --check
+sudo bash install/install.sh --check
 ```
 
 This runs all preflight checks (root, PHP, Apache, vendor/, mod_ext_filter) and reports what's ready, what's missing, and what can be auto-fixed. No files are created or modified.
@@ -80,7 +80,7 @@ Then copy the tarball to your server and install:
 
 ```bash
 scp dist/markdown-for-agents-0.1.0.tar.gz root@server:/tmp/
-ssh root@server 'cd /tmp && tar xzf markdown-for-agents-0.1.0.tar.gz && cd markdown-for-agents-0.1.0 && ./install/install.sh'
+ssh root@server 'cd /tmp && tar xzf markdown-for-agents-0.1.0.tar.gz && cd markdown-for-agents-0.1.0 && bash install/install.sh'
 ```
 
 ### Install directly from git (alternative)
