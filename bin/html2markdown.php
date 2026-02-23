@@ -147,9 +147,13 @@ try {
 
     // Estimate tokens: ~4 chars per token
     $tokenEstimate = (int) ceil(strlen($markdown) / 4);
+    $htmlTokenEstimate = (int) ceil(strlen($html) / 4);
+    $reduction = $htmlTokenEstimate > 0
+        ? round((1 - $tokenEstimate / $htmlTokenEstimate) * 100)
+        : 0;
 
     // Append metadata
-    $markdown .= "\n<!-- mfa-meta:tokens={$tokenEstimate} -->\n";
+    $markdown .= "\n<!-- mfa-meta:tokens={$tokenEstimate} html-tokens={$htmlTokenEstimate} reduction={$reduction}% -->\n";
 
     echo $markdown;
 

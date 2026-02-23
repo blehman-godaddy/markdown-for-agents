@@ -24,4 +24,4 @@ function hello() {
 
 Final thoughts on the topic.
 
-<!-- mfa-meta:tokens=134 -->
+<!-- mfa-meta:tokens=134 html-tokens=768 reduction=83% -->
