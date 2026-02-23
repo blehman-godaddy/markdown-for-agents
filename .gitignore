@@ -1,3 +1,4 @@
 /vendor/
+/dist/
 *.phar
 .DS_Store
