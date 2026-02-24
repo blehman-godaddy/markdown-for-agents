@@ -1,6 +1,12 @@
 # markdown-for-agents
 
-Apache output filter that enables `Accept: text/markdown` content negotiation server-wide on cPanel/WHM hosting via EasyApache 4. When an AI agent (or any client) sends `Accept: text/markdown`, HTML responses are automatically converted to clean Markdown — zero changes required at the origin (WordPress, PHP, static sites).
+Apache output filter that converts HTML to Markdown via `Accept: text/markdown` content negotiation. When an AI agent (or any client) sends `Accept: text/markdown`, HTML responses are automatically converted to clean Markdown — zero changes to the origin site.
+
+**Try it now:**
+
+```bash
+curl -s -H 'Accept: text/markdown' https://littleluz.net/wordpress/
+```
 
 ## How It Works
 
@@ -29,94 +35,107 @@ Client                         Apache                        Origin
   |<-----------------------------|                              |
 ```
 
-### Key design decisions
+- **Zero overhead for normal requests** — the filter only activates when `Accept: text/markdown` is present
+- **Semantic content extraction** — prefers `<article>` / `<main>` / `[role="main"]`, falls back to tag/class/ARIA stripping
+- **Safe fallback** — on any error, original HTML is returned unchanged
+- **Token metadata** — `<!-- mfa-meta:tokens=N html-tokens=N reduction=N% extraction=METHOD -->` appended to every response
 
-- **Zero overhead for normal requests**: The filter is only inserted into the chain when `Accept: text/markdown` is detected via `SetEnvIf`
-- **Content stripping**: Non-content elements (nav, sidebar, footer, ads, skip-links, scroll-to-top) are removed via XPath before conversion
-- **Safe fallback**: On any error, the original HTML is returned unchanged
-- **Token metadata**: `<!-- mfa-meta:tokens=N html-tokens=N reduction=N% -->` embedded in the response body
+## Installation
 
-## Quick Start
+There are two installation modes: **cPanel/WHM plugin** (for hosting providers) and **standalone** (for any Apache server).
+
+### cPanel/WHM Plugin (recommended for shared hosting)
+
+The plugin gives WHM admins a management page and cPanel customers a toggle to enable/disable markdown conversion for their sites.
+
+```bash
+VERSION=0.2.0
+curl -sL https://github.com/blehman-godaddy/markdown-for-agents/releases/download/v${VERSION}/markdown-for-agents-${VERSION}-cpanel-plugin.tar.gz | tar xz
+cd markdown-for-agents-${VERSION}
+sudo bash cpanel/install-plugin.sh
+```
+
+**What the plugin installs:**
+
+| Component | Location |
+|---|---|
+| Converter + PHP deps | `/opt/markdown-for-agents/` |
+| Global Apache config (ExtFilterDefine) | `/etc/apache2/conf.d/markdown-for-agents.conf` |
+| WHM admin page | WHM > Plugins > Markdown for Agents |
+| cPanel customer toggle | cPanel > Advanced > Markdown for Agents |
+
+**How it works:**
+
+- The **WHM admin page** shows global install status and a table of all accounts with enable/disable controls
+- The **cPanel toggle** lets customers enable markdown conversion for their own account
+- When enabled, per-account Apache directives are written to `/etc/apache2/conf.d/userdata/{std,ssl}/2_4/<username>/markdown-for-agents.conf`
+- WHM Feature Manager controls which hosting packages have access to the toggle
+
+**Uninstall:**
+
+```bash
+sudo bash cpanel/uninstall-plugin.sh
+```
+
+### Standalone Install (any Apache server)
+
+For non-cPanel servers or single-site setups:
+
+```bash
+VERSION=0.2.0
+curl -sL https://github.com/blehman-godaddy/markdown-for-agents/releases/download/v${VERSION}/markdown-for-agents-${VERSION}.tar.gz | tar xz
+cd markdown-for-agents-${VERSION}
+sudo bash install/install.sh
+```
+
+The standalone installer runs in three phases:
+
+1. **Preflight** — checks root, PHP version/extensions, Apache paths, vendor/, mod_ext_filter
+2. **Auto-fix** — installs missing dependencies (e.g. `ea-apache24-mod_ext_filter`) via yum
+3. **Install** — deploys files, configures Apache, runs configtest, reloads, smoke tests
+
+**Preflight check (dry run):**
+
+```bash
+sudo bash install/install.sh --check
+```
+
+**Uninstall:**
+
+```bash
+sudo bash install/uninstall.sh
+```
+
+### Build from source
+
+```bash
+git clone https://github.com/blehman-godaddy/markdown-for-agents.git
+cd markdown-for-agents
+make dist            # standalone tarball
+make cpanel-plugin   # cPanel plugin tarball
+```
 
 ### Prerequisites
 
 - Apache 2.4 with `mod_ext_filter`, `mod_setenvif`, `mod_headers`
 - PHP 8.0+ with `dom` and `xml` extensions
 
-### Install from release tarball (recommended)
-
-Download and extract the latest release, then run the installer:
-
-```bash
-VERSION=0.1.4
-curl -sL https://github.com/blehman-godaddy/markdown-for-agents/releases/download/v${VERSION}/markdown-for-agents-${VERSION}.tar.gz | tar xz
-cd markdown-for-agents-${VERSION}
-sudo bash install/install.sh
-```
-
-The tarball is self-contained — it includes all PHP dependencies, so Composer is not needed on the server.
-
-### Preflight check (dry run)
-
-Before installing, you can verify that all prerequisites are met without modifying anything:
-
-```bash
-sudo bash install/install.sh --check
-```
-
-This runs all preflight checks (root, PHP, Apache, vendor/, mod_ext_filter) and reports what's ready, what's missing, and what can be auto-fixed. No files are created or modified.
-
-### Build from source
-
-If you're developing or want to build the tarball yourself:
-
-```bash
-git clone https://github.com/blehman-godaddy/markdown-for-agents.git
-cd markdown-for-agents
-make dist
-# produces dist/markdown-for-agents-${VERSION}.tar.gz
-```
-
-Then copy the tarball to your server and install:
-
-```bash
-scp dist/markdown-for-agents-*.tar.gz root@server:/tmp/
-ssh root@server 'cd /tmp && tar xzf markdown-for-agents-*.tar.gz && cd markdown-for-agents-*/ && bash install/install.sh'
-```
-
-### Install directly from git (alternative)
-
-```bash
-git clone https://github.com/blehman-godaddy/markdown-for-agents.git /tmp/markdown-for-agents
-cd /tmp/markdown-for-agents
-composer install --no-dev
-sudo bash install/install.sh
-```
-
-### What the installer does
-
-The installer runs in three phases:
-
-1. **Preflight** — checks root, PHP version/extensions, Apache paths, vendor/, mod_ext_filter (read-only, stops on failure)
-2. **Auto-fix** — installs missing dependencies like `ea-apache24-mod_ext_filter` via yum if available
-3. **Install** — copies files to `/opt/markdown-for-agents/`, deploys Apache configs, runs configtest, reloads Apache, smoke tests the converter
-
-### Test
+## Test
 
 ```bash
 # Normal request — unchanged HTML:
 curl -sI http://localhost/ | grep Content-Type
-# → Content-Type: text/html
+# Content-Type: text/html
 
 # Markdown request — converted:
 curl -s -H "Accept: text/markdown" http://localhost/
 
-# Check response headers:
+# Response headers:
 curl -sI -H "Accept: text/markdown" http://localhost/
-# → Content-Type: text/markdown; charset=utf-8
-# → Vary: Accept
-# → x-markdown-converter: markdown-for-agents/0.1.4
-# → x-markdown-tokens: body-embedded
+# Content-Type: text/markdown; charset=utf-8
+# Vary: Accept
+# x-markdown-converter: markdown-for-agents/0.2.0
+# x-markdown-tokens: body-embedded
 ```
 
 ### Standalone converter test (no Apache)
@@ -125,12 +144,11 @@ curl -sI -H "Accept: text/markdown" http://localhost/
 composer install
 echo '<html><body><nav>Menu</nav><h1>Title</h1><p>Content here.</p><footer>Footer</footer></body></html>' \
   | php bin/html2markdown.php
-# Output:
 # # Title
 #
 # Content here.
 #
-# <!-- mfa-meta:tokens=7 html-tokens=28 reduction=75% -->
+# <!-- mfa-meta:tokens=6 html-tokens=25 reduction=76% extraction=fallback -->
 ```
 
 ### Run test suite
@@ -139,41 +157,20 @@ echo '<html><body><nav>Menu</nav><h1>Title</h1><p>Content here.</p><footer>Foote
 ./tests/run-tests.sh
 ```
 
-### Uninstall
+## Content Extraction
 
-```bash
-sudo bash install/uninstall.sh
-```
+The converter uses a priority chain to find the main content:
 
-## Project Structure
+1. **`<article>`** (single) — most specific content container (blog posts, articles)
+2. **`<main>`** — page primary content area
+3. **`[role="main"]`** — ARIA landmark
+4. **Fallback** — strips non-content elements from the full page body
 
-```
-markdown-for-agents/
-├── VERSION                           # Version string (used by Makefile + installer)
-├── Makefile                          # make dist / make clean
-├── composer.json                     # league/html-to-markdown dependency
-├── bin/
-│   ├── html2markdown.php             # Core PHP converter (stdin → stdout)
-│   └── html2markdown-wrapper.sh      # Bash wrapper for mod_ext_filter
-├── conf/
-│   ├── markdown-for-agents.conf      # Apache config
-│   └── 850-markdown-for-agents.conf  # Module loader
-├── install/
-│   ├── install.sh                    # System installer (--check for dry run)
-│   └── uninstall.sh                  # Clean removal
-└── tests/
-    ├── run-tests.sh                  # Test orchestrator
-    ├── test-passthrough.sh           # Passthrough / edge cases
-    ├── test-markdown-response.sh     # Conversion correctness
-    ├── test-headers.sh               # Token metadata validation
-    ├── test-content-quality.sh       # Fixture diff comparison
-    ├── test-edge-cases.sh            # Malformed, empty, oversized
-    └── fixtures/                     # Test HTML and expected MD
-```
+The `extraction=` field in the metadata shows which method was used.
 
-## Content Stripping
+### Fallback stripping rules
 
-The following elements are removed before conversion:
+When no semantic container is found, these elements are removed:
 
 | Type | Stripped |
 |---|---|
@@ -182,7 +179,7 @@ The following elements are removed before conversion:
 | ARIA roles | `navigation`, `banner`, `contentinfo`, `complementary` |
 | UI elements | skip-links (`skip-link`, `screen-reader-text`), scroll-to-top (`scroll-to-top`, `back-to-top`) |
 
-Class matching uses word-boundary logic (space-bounded + hyphen-prefix) to avoid false positives like `"ad"` matching `"has-global-padding"`.
+Class matching uses word-boundary logic to avoid false positives like `"ad"` matching `"has-global-padding"`.
 
 ## Response Headers
 
@@ -192,29 +189,81 @@ When `Accept: text/markdown` is present:
 |---|---|
 | `Content-Type` | `text/markdown; charset=utf-8` |
 | `Vary` | `Accept` |
-| `x-markdown-converter` | `markdown-for-agents/0.1.4` |
+| `x-markdown-converter` | `markdown-for-agents/0.2.0` |
 | `x-markdown-tokens` | `body-embedded` |
 
-The token metadata is embedded as the last line of the body:
+Token metadata is the last line of the response body:
 
 ```
-<!-- mfa-meta:tokens=74 html-tokens=16596 reduction=100% -->
+<!-- mfa-meta:tokens=74 html-tokens=16596 reduction=100% extraction=article -->
 ```
-
-- `tokens` — estimated token count of the Markdown output (~4 chars/token)
-- `html-tokens` — estimated token count of the original HTML
-- `reduction` — percentage reduction from HTML to Markdown
 
 ## Architecture
 
-Uses `mod_ext_filter` to pipe HTML through a PHP-CLI converter:
+### Standalone mode
 
-1. `SetEnvIfNoCase` detects `Accept: text/markdown` → sets `WANTS_MARKDOWN` env var
-2. `ExtFilterDefine` registers the filter with `enableenv=WANTS_MARKDOWN` + `intype=text/html`
-3. `AddOutputFilter` applies to static files; `<If>` with `SetOutputFilter` handles proxied PHP (php-fpm)
-4. The filter pipes HTML through `html2markdown-wrapper.sh` → `html2markdown.php`
-5. PHP strips non-content elements via XPath, converts to Markdown via `league/html-to-markdown`, appends token metadata
-6. Response headers are set via `Header` directives conditioned on `WANTS_MARKDOWN`
+All Apache directives in a single config. `mod_ext_filter` pipes HTML through `html2markdown-wrapper.sh` → `html2markdown.php`.
+
+### cPanel plugin mode
+
+The Apache config is split into two parts:
+
+**Global** (installed once, server-wide):
+- Module loader (`mod_ext_filter`, `mod_setenvif`, `mod_headers`)
+- `ExtFilterDefine html2md` — defines the filter (server config context, cannot be per-virtualhost)
+
+**Per-account** (toggled by customer via cPanel):
+- `SetEnvIfNoCase Accept "text/markdown" WANTS_MARKDOWN`
+- `AddOutputFilter` for static files + `SetOutputFilter` in `<If>` for proxied PHP
+- Response `Header` directives
+
+This split is required because `ExtFilterDefine` is a server-config-only directive — it cannot go inside `<VirtualHost>` blocks. The per-account directives are managed via cPanel's userdata include system.
+
+## Project Structure
+
+```
+markdown-for-agents/
+├── VERSION
+├── Makefile                              # make dist / make cpanel-plugin
+├── bin/
+│   ├── html2markdown.php                 # Core converter (stdin → stdout)
+│   └── html2markdown-wrapper.sh          # Bash wrapper for mod_ext_filter
+├── conf/
+│   ├── 850-markdown-for-agents.conf      # Module loader
+│   ├── markdown-for-agents.conf          # Standalone combined config
+│   ├── markdown-for-agents-global.conf   # cPanel: server-wide ExtFilterDefine
+│   └── markdown-for-agents-account.conf  # cPanel: per-account template
+├── lib/
+│   └── mfa-common.sh                     # Shared shell functions
+├── install/
+│   ├── install.sh                        # Standalone installer (--check for dry run)
+│   └── uninstall.sh                      # Standalone removal
+├── cpanel/
+│   ├── install-plugin.sh                 # cPanel plugin installer
+│   ├── uninstall-plugin.sh               # cPanel plugin removal
+│   ├── scripts/                          # Account management scripts
+│   │   ├── mfa-global-install.sh
+│   │   ├── mfa-global-uninstall.sh
+│   │   ├── mfa-account-enable.sh
+│   │   ├── mfa-account-disable.sh
+│   │   └── mfa-account-status.sh
+│   ├── whm/                              # WHM admin plugin
+│   │   ├── markdown_for_agents.conf      # AppConfig registration
+│   │   └── cgi/addon_markdown_for_agents.cgi
+│   └── cpanel/                           # cPanel customer plugin
+│       ├── install.json                  # dynamicui registration
+│       └── markdown_for_agents/index.live.php
+└── tests/
+    ├── run-tests.sh
+    ├── test-passthrough.sh
+    ├── test-markdown-response.sh
+    ├── test-headers.sh
+    ├── test-content-quality.sh
+    ├── test-edge-cases.sh
+    ├── test-config-split.sh
+    ├── test-cpanel-scripts.sh
+    └── fixtures/
+```
 
 ## License
 
