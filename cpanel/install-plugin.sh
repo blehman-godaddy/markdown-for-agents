@@ -85,41 +85,33 @@ else
 fi
 
 # ============================================================================
-# 3. cPanel plugin registration (via install_plugin for proper icon handling)
+# 3. cPanel plugin registration
 # ============================================================================
 
 log "Phase 3: Registering cPanel plugin ..."
 
-CPANEL_PLUGIN_DIR="/usr/local/cpanel/base/frontend/jupiter/markdown_for_agents"
+JUPITER_DIR="/usr/local/cpanel/base/frontend/jupiter"
+CPANEL_PLUGIN_DIR="$JUPITER_DIR/markdown_for_agents"
+CPANEL_DYNAMICUI_DIR="$JUPITER_DIR/dynamicui"
+CPANEL_ICONS_DIR="$JUPITER_DIR/assets/application_icons"
 
-# Copy the .live.php page (not part of the plugin archive — it lives in the theme)
+# Copy the .live.php page
 mkdir -p "$CPANEL_PLUGIN_DIR"
 cp "$SCRIPT_DIR/cpanel/markdown_for_agents/index.live.php" "$CPANEL_PLUGIN_DIR/"
 chmod 644 "$CPANEL_PLUGIN_DIR/index.live.php"
 
-# Build plugin archive for install_plugin (handles DynamicUI + icon registration)
-PLUGIN_TMP="$(mktemp -d)"
-PLUGIN_ARCHIVE_DIR="$PLUGIN_TMP/markdown_for_agents"
-mkdir -p "$PLUGIN_ARCHIVE_DIR"
-cp "$SCRIPT_DIR/cpanel/install.json" "$PLUGIN_ARCHIVE_DIR/"
-cp "$SCRIPT_DIR/cpanel/icons/markdown-for-agents.png" "$PLUGIN_ARCHIVE_DIR/"
+# Place icon where cPanel expects it (alongside wp-toolkit, installatron, etc.)
+mkdir -p "$CPANEL_ICONS_DIR"
+cp "$SCRIPT_DIR/cpanel/icons/markdown-for-agents.png" "$CPANEL_ICONS_DIR/markdown_for_agents.png"
 
-tar -C "$PLUGIN_TMP" -czf "$PLUGIN_TMP/markdown_for_agents.tar.gz" markdown_for_agents
+# Remove stale JSON from previous installs
+rm -f "$CPANEL_DYNAMICUI_DIR/markdown_for_agents.json"
 
-if [ -x "/usr/local/cpanel/scripts/install_plugin" ]; then
-    /usr/local/cpanel/scripts/install_plugin "$PLUGIN_TMP/markdown_for_agents.tar.gz"
-    log "cPanel plugin registered via install_plugin."
-else
-    # Fallback: manual DynamicUI registration
-    warn "install_plugin not found — falling back to manual registration"
-    CPANEL_DYNAMICUI_DIR="/usr/local/cpanel/base/frontend/jupiter/dynamicui"
-    mkdir -p "$CPANEL_DYNAMICUI_DIR"
-    cp "$SCRIPT_DIR/cpanel/install.json" "$CPANEL_DYNAMICUI_DIR/markdown_for_agents.json"
-    chmod 644 "$CPANEL_DYNAMICUI_DIR/markdown_for_agents.json"
-    cp "$SCRIPT_DIR/cpanel/icons/markdown-for-agents.png" "$CPANEL_PLUGIN_DIR/"
-fi
-
-rm -rf "$PLUGIN_TMP"
+# Write DynamicUI .conf in native cPanel format
+mkdir -p "$CPANEL_DYNAMICUI_DIR"
+echo 'description=>Enable or disable HTML-to-Markdown conversion for your sites,feature=>markdown_for_agents,file=>markdown_for_agents,group=>advanced,height=>48,imgtype=>icon,itemdesc=>Markdown for Agents,itemorder=>1,subtype=>img,target=>_self,type=>image,url=>markdown_for_agents/index.live.php,width=>48' \
+    > "$CPANEL_DYNAMICUI_DIR/dynamicui_markdown_for_agents.conf"
+chmod 644 "$CPANEL_DYNAMICUI_DIR/dynamicui_markdown_for_agents.conf"
 
 log "cPanel plugin registered."
 
