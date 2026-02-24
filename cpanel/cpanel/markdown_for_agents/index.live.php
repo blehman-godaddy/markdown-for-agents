@@ -3,18 +3,29 @@
  * index.live.php — cPanel customer page for markdown-for-agents.
  *
  * Allows customers to enable/disable HTML-to-Markdown conversion for their account.
- * Uses REMOTE_USER (set by cPanel, not spoofable) to identify the account.
+ * Uses cPanel LiveAPI for proper chrome integration (sidebar, header).
  */
+
+include("/usr/local/cpanel/php/cpanel.php");
+$cpanel = new CPANEL();
+
+echo $cpanel->header("Markdown for Agents");
 
 // cPanel sets REMOTE_USER for authenticated sessions
 $username = $_ENV['REMOTE_USER'] ?? getenv('REMOTE_USER') ?: '';
 if (empty($username)) {
-    die('<p>Error: Could not determine your cPanel username.</p>');
+    echo '<div class="callout callout-danger">Error: Could not determine your cPanel username.</div>';
+    echo $cpanel->footer();
+    $cpanel->end();
+    exit;
 }
 
 // Security: ensure username matches expected format
 if (!preg_match('/^[a-z][a-z0-9]{0,15}$/', $username)) {
-    die('<p>Error: Invalid username format.</p>');
+    echo '<div class="callout callout-danger">Error: Invalid username format.</div>';
+    echo $cpanel->footer();
+    $cpanel->end();
+    exit;
 }
 
 $scripts_dir = '/opt/markdown-for-agents/cpanel/scripts';
@@ -59,7 +70,6 @@ $global_installed = $status['global_installed'] ?? false;
 $version          = $status['version'] ?? 'unknown';
 ?>
 <style>
-    .mfa-wrap { max-width: 600px; }
     .mfa-status { padding: 15px; margin: 15px 0; border-radius: 6px; }
     .mfa-ok { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
     .mfa-warn { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
@@ -75,9 +85,6 @@ $version          = $status['version'] ?? 'unknown';
                 font-family: monospace; font-size: 13px; overflow-x: auto; }
 </style>
 
-<div class="mfa-wrap">
-
-<h1>Markdown for Agents</h1>
 <p>Convert your site's HTML to Markdown automatically when AI agents request it.</p>
 
 <?php if ($message): ?>
@@ -134,4 +141,7 @@ $version          = $status['version'] ?? 'unknown';
     markdown-for-agents v<?= htmlspecialchars($version) ?>
 </p>
 
-</div>
+<?php
+echo $cpanel->footer();
+$cpanel->end();
+?>
