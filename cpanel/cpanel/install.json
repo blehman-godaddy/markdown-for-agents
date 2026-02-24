@@ -9,7 +9,7 @@
         "file": "markdown_for_agents/index.live.php",
         "name": "Markdown for Agents",
         "description": "Enable or disable HTML-to-Markdown conversion for your sites",
-        "icon": "icons/markdown-for-agents.svg",
+        "icon": "markdown_for_agents/icons/markdown-for-agents.svg",
         "featuremanager": 1
     }
 ]
