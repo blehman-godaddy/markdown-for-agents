@@ -29,6 +29,12 @@ log "Removing markdown-for-agents cPanel plugin ..."
 
 log "Phase 1: Removing cPanel plugin ..."
 
+# Unregister via uninstall_plugin (reverses install_plugin registration)
+if [ -x "/usr/local/cpanel/scripts/uninstall_plugin" ]; then
+    /usr/local/cpanel/scripts/uninstall_plugin markdown_for_agents 2>/dev/null || true
+fi
+
+# Clean up any remaining files
 rm -rf "/usr/local/cpanel/base/frontend/jupiter/markdown_for_agents"
 rm -f "/usr/local/cpanel/base/frontend/jupiter/dynamicui/markdown_for_agents.json"
 log "cPanel plugin removed."
