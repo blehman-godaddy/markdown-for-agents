@@ -58,17 +58,16 @@ chmod 755 "$MFA_INSTALL_DIR/lib/mfa-common.sh"
 
 log "Phase 2: Registering WHM plugin ..."
 
-WHM_ADDON_DIR="/usr/local/cpanel/whostmgr/cgi/addons/markdown_for_agents"
-mkdir -p "$WHM_ADDON_DIR/cgi"
+WHM_CGI_DIR="/usr/local/cpanel/whostmgr/docroot/cgi"
 
-# Copy CGI
-cp "$SCRIPT_DIR/whm/cgi/addon_markdown_for_agents.cgi" "$WHM_ADDON_DIR/cgi/"
-chmod 755 "$WHM_ADDON_DIR/cgi/addon_markdown_for_agents.cgi"
+# Copy CGI to standard WHM CGI directory
+cp "$SCRIPT_DIR/whm/cgi/addon_markdown_for_agents.cgi" "$WHM_CGI_DIR/"
+chmod 755 "$WHM_CGI_DIR/addon_markdown_for_agents.cgi"
 
-# Copy icon if present
+# Copy icon to addon_plugins directory
+WHM_ICON_DIR="/usr/local/cpanel/whostmgr/docroot/addon_plugins"
 if [ -d "$SCRIPT_DIR/whm/icons" ]; then
-    mkdir -p "$WHM_ADDON_DIR/icons"
-    cp "$SCRIPT_DIR/whm/icons/"* "$WHM_ADDON_DIR/icons/" 2>/dev/null || true
+    cp "$SCRIPT_DIR/whm/icons/"* "$WHM_ICON_DIR/" 2>/dev/null || true
 fi
 
 # Register AppConfig

@@ -48,7 +48,7 @@ if [ -f "$APPCONFIG" ]; then
     rm -f "$APPCONFIG"
 fi
 
-rm -rf "/usr/local/cpanel/whostmgr/cgi/addons/markdown_for_agents"
+rm -f "/usr/local/cpanel/whostmgr/docroot/cgi/addon_markdown_for_agents.cgi"
 log "WHM plugin removed."
 
 # ============================================================================
