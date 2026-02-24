@@ -46,6 +46,14 @@ Apache output filter that converts HTML to Markdown via `Accept: text/markdown` 
 
 7. **Private repo tarball downloads need auth** — `curl -sL` to GitHub releases may get HTML redirect instead of the file. Use `gh` CLI or add auth header.
 
+8. **cPanel DynamicUI uses `.conf` files, NOT JSON** — the `dynamicui/` directory reads Perl hash syntax (`key=>value,key=>value`), not JSON. JSON files are silently ignored. See `dynamicui_wp-toolkit.conf` for format reference.
+
+9. **cPanel plugin icons go in `assets/application_icons/`** — the `file=>pluginname` key in the DynamicUI conf maps to `assets/application_icons/pluginname.png` under the Jupiter theme directory. PNG format, not SVG.
+
+10. **cPanel `.live.php` pages MUST use LiveAPI** — `include("/usr/local/cpanel/php/cpanel.php"); $cpanel = new CPANEL();` then `$cpanel->header("Title")` / `$cpanel->footer()` / `$cpanel->end()`. Without this, pages render without chrome (no sidebar) and log "Child failed to make LIVEAPI connection to cPanel."
+
+11. **Two separate tarballs** — `make dist` builds standalone Apache tarball, `make cpanel-plugin` builds cPanel plugin tarball. The cPanel tarball includes the `cpanel/` directory. Deploy cPanel with the `-cpanel-plugin` tarball.
+
 ## XPath class stripping
 
 Uses word-boundary matching, NOT substring matching. The XPath checks for:
@@ -69,6 +77,7 @@ Keywords: sidebar, widget, ad, advertisement, navigation, menu, breadcrumb
 2. `git commit && git push`
 3. `git tag v{VERSION} && git push origin v{VERSION}`
 4. GitHub Actions builds tarball automatically
-5. Deploy: `curl -sL .../releases/download/v{VERSION}/markdown-for-agents-{VERSION}.tar.gz | tar xz && cd markdown-for-agents-{VERSION} && sudo bash install/install.sh`
+5. Deploy standalone: `curl -sL .../releases/download/v{VERSION}/markdown-for-agents-{VERSION}.tar.gz | tar xz && cd markdown-for-agents-{VERSION} && sudo bash install/install.sh`
+6. Deploy cPanel plugin: `curl -sL .../releases/download/v{VERSION}/markdown-for-agents-{VERSION}-cpanel-plugin.tar.gz | tar xz && cd markdown-for-agents-{VERSION} && sudo bash cpanel/install-plugin.sh`
 
-## Current version: v0.2.0
+## Current version: v0.2.5
