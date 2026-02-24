@@ -58,72 +58,66 @@ $enabled          = $status['enabled'] ?? false;
 $global_installed = $status['global_installed'] ?? false;
 $version          = $status['version'] ?? 'unknown';
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Markdown for Agents</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; max-width: 600px; }
-        h1 { color: #333; }
-        .status-box { padding: 15px; margin: 15px 0; border-radius: 6px; }
-        .status-ok { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
-        .status-warn { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
-        .status-err { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
-        .status-info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
-        .btn { display: inline-block; padding: 10px 24px; border-radius: 4px; text-decoration: none;
+<style>
+    .mfa-wrap { max-width: 600px; }
+    .mfa-status { padding: 15px; margin: 15px 0; border-radius: 6px; }
+    .mfa-ok { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+    .mfa-warn { background: #fff3cd; border: 1px solid #ffeeba; color: #856404; }
+    .mfa-err { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+    .mfa-info { background: #d1ecf1; border: 1px solid #bee5eb; color: #0c5460; }
+    .mfa-btn { display: inline-block; padding: 10px 24px; border-radius: 4px; text-decoration: none;
                font-size: 16px; cursor: pointer; border: none; color: white; margin: 10px 0; }
-        .btn-enable { background: #28a745; }
-        .btn-enable:hover { background: #218838; }
-        .btn-disable { background: #dc3545; }
-        .btn-disable:hover { background: #c82333; }
-        code { background: #f8f9fa; padding: 2px 6px; border-radius: 3px; font-size: 14px; }
-        .test-example { background: #f8f9fa; padding: 12px; border-radius: 6px; margin: 10px 0;
-                        font-family: monospace; font-size: 13px; overflow-x: auto; }
-    </style>
-</head>
-<body>
+    .mfa-btn-enable { background: #28a745; }
+    .mfa-btn-enable:hover { background: #218838; }
+    .mfa-btn-disable { background: #dc3545; }
+    .mfa-btn-disable:hover { background: #c82333; }
+    .mfa-test { background: #f8f9fa; padding: 12px; border-radius: 6px; margin: 10px 0;
+                font-family: monospace; font-size: 13px; overflow-x: auto; }
+</style>
+
+<div class="mfa-wrap">
 
 <h1>Markdown for Agents</h1>
 <p>Convert your site's HTML to Markdown automatically when AI agents request it.</p>
 
 <?php if ($message): ?>
-    <div class="status-box status-ok"><?= htmlspecialchars($message) ?></div>
+    <div class="mfa-status mfa-ok"><?= htmlspecialchars($message) ?></div>
 <?php endif; ?>
 
 <?php if ($error): ?>
-    <div class="status-box status-err"><?= htmlspecialchars($error) ?></div>
+    <div class="mfa-status mfa-err"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
 <?php if (!$global_installed): ?>
-    <div class="status-box status-warn">
+    <div class="mfa-status mfa-warn">
         <strong>Not Available</strong> &mdash; The server administrator has not installed the markdown conversion infrastructure.
         Please contact your hosting provider.
     </div>
 <?php else: ?>
     <?php if ($enabled): ?>
-        <div class="status-box status-ok">
+        <div class="mfa-status mfa-ok">
             <strong>Status: Enabled</strong><br>
             Your sites respond to <code>Accept: text/markdown</code> requests with Markdown content.
         </div>
 
         <form method="POST">
             <input type="hidden" name="action" value="disable">
-            <button type="submit" class="btn btn-disable">Disable Markdown Conversion</button>
+            <button type="submit" class="mfa-btn mfa-btn-disable">Disable Markdown Conversion</button>
         </form>
 
         <h3>Test it</h3>
-        <div class="test-example">
+        <div class="mfa-test">
             curl -s -H 'Accept: text/markdown' https://yourdomain.com/
         </div>
     <?php else: ?>
-        <div class="status-box status-info">
+        <div class="mfa-status mfa-info">
             <strong>Status: Disabled</strong><br>
             Markdown conversion is available but not enabled for your account.
         </div>
 
         <form method="POST">
             <input type="hidden" name="action" value="enable">
-            <button type="submit" class="btn btn-enable">Enable Markdown Conversion</button>
+            <button type="submit" class="mfa-btn mfa-btn-enable">Enable Markdown Conversion</button>
         </form>
     <?php endif; ?>
 
@@ -140,5 +134,4 @@ $version          = $status['version'] ?? 'unknown';
     markdown-for-agents v<?= htmlspecialchars($version) ?>
 </p>
 
-</body>
-</html>
+</div>
