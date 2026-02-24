@@ -9,16 +9,17 @@
 
 set -euo pipefail
 
-INSTALL_DIR="/opt/markdown-for-agents"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# Source shared functions
+source "$PROJECT_DIR/lib/mfa-common.sh"
+
+INSTALL_DIR="$MFA_INSTALL_DIR"
+
 # Read version from VERSION file, fall back to hardcoded
-if [ -f "$PROJECT_DIR/VERSION" ]; then
-    VERSION="$(tr -d '[:space:]' < "$PROJECT_DIR/VERSION")"
-else
-    VERSION="0.1.0"
-fi
+mfa_read_version "$PROJECT_DIR"
+VERSION="$MFA_VERSION"
 
 # --- Parse flags ---
 
@@ -26,29 +27,6 @@ CHECK_ONLY=false
 if [[ "${1:-}" == "--check" ]]; then
     CHECK_ONLY=true
 fi
-
-# --- Colors ---
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m'
-
-log()   { echo -e "${GREEN}[mfa]${NC} $*"; }
-warn()  { echo -e "${YELLOW}[mfa]${NC} $*"; }
-error() { echo -e "${RED}[mfa]${NC} $*" >&2; }
-info()  { echo -e "${BLUE}[mfa]${NC} $*"; }
-
-# Track preflight results
-FATAL=0
-WARNINGS=0
-AUTOFIX_NEEDED=()
-
-preflight_ok()   { log "  ✓ $*"; }
-preflight_warn() { warn "  ⚠ $*"; WARNINGS=$((WARNINGS + 1)); }
-preflight_fail() { error "  ✗ $*"; FATAL=$((FATAL + 1)); }
 
 # ============================================================================
 # PHASE 1 — PREFLIGHT (read-only, checks everything before touching system)
@@ -72,21 +50,8 @@ fi
 
 info "Checking PHP ..."
 
-PHP_BIN=""
-for candidate in /opt/cpanel/ea-php82/root/usr/bin/php \
-                 /opt/cpanel/ea-php81/root/usr/bin/php \
-                 /opt/cpanel/ea-php80/root/usr/bin/php \
-                 /usr/local/bin/php \
-                 /usr/bin/php; do
-    if [ -x "$candidate" ]; then
-        PHP_BIN="$candidate"
-        break
-    fi
-done
-
-if [ -z "$PHP_BIN" ]; then
-    preflight_fail "No PHP binary found"
-else
+if mfa_detect_php; then
+    PHP_BIN="$MFA_PHP_BIN"
     PHP_VERSION_FULL=$("$PHP_BIN" -v 2>/dev/null | head -1 || echo "unknown")
     PHP_MAJOR=$("$PHP_BIN" -r 'echo PHP_MAJOR_VERSION;' 2>/dev/null || echo "0")
     if [ "$PHP_MAJOR" -lt 8 ]; then
@@ -103,37 +68,29 @@ else
             preflight_fail "PHP extension missing: $ext"
         fi
     done
+else
+    PHP_BIN=""
+    preflight_fail "No PHP binary found"
 fi
 
 # --- 3. Apache config directory detection ---
 
 info "Checking Apache ..."
 
-APACHE_CONF_D=""
-APACHE_MODULES_D=""
-APACHECTL=""
+if mfa_detect_apache; then
+    APACHE_CONF_D="$MFA_APACHE_CONF_D"
+    APACHE_MODULES_D="$MFA_APACHE_MODULES_D"
+    APACHECTL="$MFA_APACHECTL"
 
-if [ -d "/etc/apache2/conf.d" ]; then
-    APACHE_CONF_D="/etc/apache2/conf.d"
-    APACHE_MODULES_D="/etc/apache2/conf.modules.d"
-    APACHECTL="/usr/sbin/apachectl"
-elif [ -d "/etc/httpd/conf.d" ]; then
-    APACHE_CONF_D="/etc/httpd/conf.d"
-    APACHE_MODULES_D="/etc/httpd/conf.modules.d"
-    APACHECTL="/usr/sbin/apachectl"
-elif [ -d "/etc/apache2/conf-available" ]; then
-    APACHE_CONF_D="/etc/apache2/conf-available"
-    APACHE_MODULES_D="/etc/apache2/mods-available"
-    APACHECTL="/usr/sbin/apache2ctl"
-fi
-
-if [ -z "$APACHE_CONF_D" ]; then
-    preflight_fail "Cannot detect Apache config directory (checked EA4, RHEL, Debian)"
-else
     preflight_ok "Apache config: $APACHE_CONF_D"
     if [ -n "$APACHE_MODULES_D" ] && [ -d "$APACHE_MODULES_D" ]; then
         preflight_ok "Apache modules: $APACHE_MODULES_D"
     fi
+else
+    APACHE_CONF_D=""
+    APACHE_MODULES_D=""
+    APACHECTL=""
+    preflight_fail "Cannot detect Apache config directory (checked EA4, RHEL, Debian)"
 fi
 
 # --- 4. vendor/ directory present ---
@@ -150,40 +107,13 @@ fi
 
 info "Checking mod_ext_filter ..."
 
-MOD_EXT_FILTER_LOADED=false
-MOD_EXT_FILTER_SO_EXISTS=false
-MOD_EXT_FILTER_RPM_AVAILABLE=false
+mfa_check_mod_ext_filter
 
-# Check if already loaded
-if [ -n "${APACHECTL:-}" ] && [ -x "${APACHECTL:-}" ]; then
-    if "$APACHECTL" -M 2>/dev/null | grep -qi "ext_filter"; then
-        MOD_EXT_FILTER_LOADED=true
-    fi
-fi
-
-# Check if .so exists on disk
-for so_path in /usr/lib64/apache2/mod_ext_filter.so \
-               /usr/lib/apache2/modules/mod_ext_filter.so \
-               /usr/lib64/httpd/modules/mod_ext_filter.so \
-               /usr/lib/httpd/modules/mod_ext_filter.so; do
-    if [ -f "$so_path" ]; then
-        MOD_EXT_FILTER_SO_EXISTS=true
-        break
-    fi
-done
-
-# Check if RPM is available (cPanel / RHEL)
-if command -v yum &>/dev/null; then
-    if yum list available ea-apache24-mod_ext_filter 2>/dev/null | grep -q ea-apache24-mod_ext_filter; then
-        MOD_EXT_FILTER_RPM_AVAILABLE=true
-    fi
-fi
-
-if $MOD_EXT_FILTER_LOADED; then
+if $MFA_MOD_EXT_FILTER_LOADED; then
     preflight_ok "mod_ext_filter is loaded"
-elif $MOD_EXT_FILTER_SO_EXISTS; then
+elif $MFA_MOD_EXT_FILTER_SO_EXISTS; then
     preflight_ok "mod_ext_filter .so found (will be loaded by config)"
-elif $MOD_EXT_FILTER_RPM_AVAILABLE; then
+elif $MFA_MOD_EXT_FILTER_RPM_AVAILABLE; then
     preflight_warn "mod_ext_filter not installed — RPM ea-apache24-mod_ext_filter is available"
     AUTOFIX_NEEDED+=("mod_ext_filter")
 else
@@ -246,7 +176,7 @@ if [ ${#AUTOFIX_NEEDED[@]} -gt 0 ]; then
     for fix in "${AUTOFIX_NEEDED[@]}"; do
         case "$fix" in
             mod_ext_filter)
-                if $MOD_EXT_FILTER_RPM_AVAILABLE; then
+                if $MFA_MOD_EXT_FILTER_RPM_AVAILABLE; then
                     log "Installing ea-apache24-mod_ext_filter via yum ..."
                     if yum install -y ea-apache24-mod_ext_filter; then
                         preflight_ok "ea-apache24-mod_ext_filter installed"
@@ -317,9 +247,9 @@ fi
 
 log "Testing Apache configuration ..."
 
-if "$APACHECTL" configtest 2>&1; then
+if mfa_configtest; then
     log "Config test passed. Reloading Apache ..."
-    "$APACHECTL" graceful
+    mfa_reload_apache
     log "Apache reloaded."
 else
     error "Apache config test FAILED. Rolling back ..."
@@ -333,13 +263,10 @@ fi
 
 log "Running smoke test ..."
 
-SMOKE_RESULT=$(echo '<html><body><h1>Test</h1><p>Hello</p></body></html>' | "$PHP_BIN" "$INSTALL_DIR/bin/html2markdown.php" 2>/dev/null)
-
-if echo "$SMOKE_RESULT" | grep -q "# Test"; then
+if mfa_smoke_test "$PHP_BIN" "$INSTALL_DIR/bin/html2markdown.php"; then
     log "Smoke test passed."
 else
     warn "Smoke test: converter output unexpected. Check manually."
-    warn "Output: $SMOKE_RESULT"
 fi
 
 # --- Done ---

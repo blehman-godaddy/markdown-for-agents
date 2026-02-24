@@ -20,11 +20,15 @@ jobs:
           php-version: '8.2'
           tools: composer:v2
 
-      - name: Build distribution tarball
+      - name: Build standalone tarball
         run: make dist
+
+      - name: Build cPanel plugin tarball
+        run: make cpanel-plugin
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/markdown-for-agents-*.tar.gz
+          files: |
+            dist/markdown-for-agents-*.tar.gz
           generate_release_notes: true
